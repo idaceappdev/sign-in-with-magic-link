@@ -1,0 +1,1 @@
+# Magic links with Azure AD B2C

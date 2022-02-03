@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMF.MagicLinks.WebApp", "TMF.MagicLinks.WebApp\TMF.MagicLinks.WebApp.csproj", "{39FDB052-7F33-4643-BD56-CAFD8625A473}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TMF.MagicLinks.API", "TMF.MagicLinks.API\TMF.MagicLinks.API.csproj", "{CB4AD5C0-C2BA-43F3-9E1B-ED4C5A62FF11}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{39FDB052-7F33-4643-BD56-CAFD8625A473}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39FDB052-7F33-4643-BD56-CAFD8625A473}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39FDB052-7F33-4643-BD56-CAFD8625A473}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39FDB052-7F33-4643-BD56-CAFD8625A473}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CB4AD5C0-C2BA-43F3-9E1B-ED4C5A62FF11}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CB4AD5C0-C2BA-43F3-9E1B-ED4C5A62FF11}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CB4AD5C0-C2BA-43F3-9E1B-ED4C5A62FF11}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CB4AD5C0-C2BA-43F3-9E1B-ED4C5A62FF11}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {19C8DE49-5447-4867-B2E4-A185A02B7D42}
+	EndGlobalSection
+EndGlobal

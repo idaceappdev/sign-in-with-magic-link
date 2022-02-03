@@ -1,0 +1,24 @@
+﻿@page "/user"
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>User page</PageTitle>
+
+<h1>User: @_userName</h1>
+
+
+@code {
+    private string _userName = "Please authenticate first";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            _userName = user.Claims.First(c => c.Type == ClaimTypes.GivenName).Value;
+        }
+    }
+ }

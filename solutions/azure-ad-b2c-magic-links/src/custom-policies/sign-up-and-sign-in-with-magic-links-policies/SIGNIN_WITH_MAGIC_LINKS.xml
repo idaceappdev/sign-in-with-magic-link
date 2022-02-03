@@ -47,7 +47,7 @@
           <Metadata>
             <!--Sample action required: replace with your endpoint location -->
             <Item Key="METADATA">https://xxx.b2clogin.com/xxx.onmicrosoft.com/v2.0/.well-known/openid-configuration?p=B2C_1A_SIGNUP_SIGNIN_MAGIC_LINKS</Item>
-            <Item Key="IdTokenAudience"></Item>
+            <!-- <Item Key="IdTokenAudience">your_optional_token_audience_override</Item> -->
             <!-- <Item Key="issuer">your_optional_token_issuer_override</Item> -->
           </Metadata>
           <OutputClaims>

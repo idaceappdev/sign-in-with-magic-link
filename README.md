@@ -539,7 +539,7 @@ We need an additional custom policies
 
 ```
 
-2. B2C_1A_SignUp_SignIn_with_magic_link
+2. B2C_1A_signin_with_magic_link
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>

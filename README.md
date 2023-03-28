@@ -167,7 +167,7 @@ You might think that this means that you can just make the magic link send you d
 
 So the flow basically becomes something like this:
 
-![App flow diagram.](images/mailer_flow.png)
+![App flow diagram.](images/Mailer_Flow.png)
 
 For a Production scenario, the link containing the the id_token_hint should point to your application, https://myapp.com/redeem?hint=<id_token_hint value>. The application should have a valid route to handle a query parameter contatining the id_token_hint. The App should then use the authentication library to start an authentication to the AAD B2C Policy Id for which this id_token_hint is due to be consumed at. The library will contain a method to add query parameters to the authentication request. See the docuementation for the library in use to implement this.
 

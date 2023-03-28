@@ -60,7 +60,7 @@ Create a dummy set of new base, extension and relying party files. You can do so
 https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack.
 
 To keep things simple we will use
-https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack/tree/master/LocalAcc... but any starter pack can be used. (Suffix these with \_DUMMY or something so you don't mix them with actual policies.)
+https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack/tree/main/LocalAccounts but any starter pack can be used. (Suffix these with \_DUMMY or something so you don't mix them with actual policies.)
 
 Once you have successfully setup the new starter pack policies open the base file of this set and update the TechnicalProfile Id="JwtIssuer" Here we will update the token signing key container to the key we created.
 

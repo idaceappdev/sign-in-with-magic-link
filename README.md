@@ -157,17 +157,134 @@ If you publish the application to Azure App Service, you'll need to configure a 
 2. Upload your certificate in the **Private Certificates** tab of the **SSL Settings** blade of your Azure App Service.
 3. [Ensure App Service loads the certificate](https://docs.microsoft.com/en-us/azure/app-service/app-service-web-ssl-cert-load#load-your-certificates) when the app runs.
 
-## Using this in your Production Application
+## Adapting an MVC web page
 
-The authentication libraries create a `state` when the authentication flow begins from your application. This sample creates a raw link to the Azure AD B2C Policy, also referred to as a "Run Now" link. This type of link is not suitable for your production application instance and should only be used to test the sample.
+Thing is - while this would prove the setup is correct this doesn't plug into your regular templatized .NET Core web app. When you build your app based on the templates in Visual Studio and enable OpenID Connect-based authentication a couple of things is configured in the background for you to make it work more or less automatically.
 
-For a Production scenario, the link containing the the `id_token_hint` should point to your application, `https://myapp.com/redeem?hint=<id_token_hint value>`. The application should have a valid route to handle a query parameter contatining the `id_token_hint`. The App should then use the authentication library to start an authentication to the AAD B2C Policy Id for which this `id_token_hint` is due to be consumed at. The library will contain a method to add query parameters to the authentication request. See the docuementation for the library in use to implement this.
+If your app is running at https://foo.bar a SignIn action will take you to https://contoso.b2clogin.com/xyz, and once you have logged in B2C will send your browser session back to https://foo.bar/signin-oidc.
 
-The authentication library will then build the final authentication link, with the `id_token_hint` appended as part of a query parameter. This will now be a valid authentication request and your user will be redirected to the Azure AD B2C policy from your Application. Your application will be able to handle the response from Azure AD B2C properly.
+You might think that this means that you can just make the magic link send you directly to B2C and include the corresponding return url, but what will happen is that the app running at https://foo.bar will recognize that it didn't initiate the request and basically says "I don't trust this". (Auth endpoints are different than API endpoints so it's not just a matter of accepting a token.)
 
-- For [Single Page Applications library guidance](https://docs.microsoft.com/en-us/azure/active-directory-b2c/enable-authentication-spa-app-options#pass-id-token-hint).
+So the flow basically becomes something like this:
 
-- For [.Net Applications library guidance](https://learn.microsoft.com/en-us/azure/active-directory-b2c/enable-authentication-web-application-options#pass-an-id-token-hint).
+![App flow diagram.](images/mailer_flow.png)
+
+For a Production scenario, the link containing the the id_token_hint should point to your application, https://myapp.com/redeem?hint=<id_token_hint value>. The application should have a valid route to handle a query parameter contatining the id_token_hint. The App should then use the authentication library to start an authentication to the AAD B2C Policy Id for which this id_token_hint is due to be consumed at. The library will contain a method to add query parameters to the authentication request. See the docuementation for the library in use to implement this.
+
+The authentication library will then build the final authentication link, with the id_token_hint appended as part of a query parameter. This will now be a valid authentication request and your user will be redirected to the Azure AD B2C policy from your Application. Your application will be able to handle the response from Azure AD B2C properly.
+
+To implement this requirement I did the following:
+
+Generated the link containing the the id_token_hint in the API
+
+```csharp
+using TMF.MagicLinks.API.DTO;
+
+namespace TMF.MagicLinks.API.Infrastructure
+{
+    public class UserMagicLinkInvitationHandler
+    {
+        private readonly IdTokenHintBuilder _idTokenHintBuilder;
+        private readonly MailDeliveryService _mailDeliveryService;
+        private readonly IConfiguration _configuration;
+
+        public UserMagicLinkInvitationHandler(IdTokenHintBuilder idTokenHintBuilder,
+                                          MailDeliveryService mailDeliveryService,
+                                          IConfiguration configuration)
+        {
+            _idTokenHintBuilder = idTokenHintBuilder;
+            _mailDeliveryService = mailDeliveryService;
+            _configuration = configuration;
+        }
+
+        public async Task SendEmailWithMagicLinkAsync(UserInputClaimsForMagicLink userInputClaimsForMagicLink)
+        {
+            var idTokenHint = _idTokenHintBuilder.BuildIdToken(userInputClaimsForMagicLink.Email);
+
+            var redirectUrl = _configuration
+                   .GetSection("UserMagicLinkInvitationConfiguration")["B2CRedirectUri"];
+
+            var magicLinkLoginUrl = $"{redirectUrl}?id_token_hint={idTokenHint}";
+
+            var emailContentWithMagicLink = new EmailContentWithMagicLink
+            {
+                LoginMagicLink = magicLinkLoginUrl,
+                ToEmail = userInputClaimsForMagicLink.Email
+            };
+
+            await _mailDeliveryService.SendInvitationMessageAsync(emailContentWithMagicLink);
+        }
+
+
+
+
+        //IMPORTANT! This method will generate test magic link to redirect to jwt.ms site:
+        public async Task SendEmailWithTestMagicLinkAsync(UserInputClaimsForMagicLink userInputClaimsForMagicLink)
+        {
+            var idTokenHint = _idTokenHintBuilder.BuildIdToken(userInputClaimsForMagicLink.Email);
+            string nonce = Guid.NewGuid().ToString("n");
+
+            var signInUrl = _configuration
+                   .GetSection("UserMagicLinkInvitationConfiguration")["B2CSignInWithMagicLinkUrl"];
+            var tenantName = _configuration
+                   .GetSection("UserMagicLinkInvitationConfiguration")["B2CTenant"];
+            var signInWithMagicLinkPolicy = _configuration
+                   .GetSection("UserMagicLinkInvitationConfiguration")["B2CSignInWithMagicLinkPolicy"];
+            var appClientId = _configuration
+                   .GetSection("UserMagicLinkInvitationConfiguration")["B2CClientId"];
+            var redirectUrl = "https://jwt.ms";
+
+            var magicLinkLoginUrl = string.Format(signInUrl, tenantName,
+                    signInWithMagicLinkPolicy,
+                    appClientId,
+                    Uri.EscapeDataString(redirectUrl),
+                    nonce) + "&id_token_hint=" + idTokenHint;
+
+
+            var emailContentWithMagicLink = new EmailContentWithMagicLink
+            {
+                LoginMagicLink = magicLinkLoginUrl,
+                ToEmail = userInputClaimsForMagicLink.Email
+            };
+
+            await _mailDeliveryService.SendInvitationMessageAsync(emailContentWithMagicLink);
+        }
+    }
+}
+```
+
+Impelemented a valid route to handle the query parameter contatining the id_token_hint in the ASPNET Web Application.
+
+```csharp
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace TMF.MagicLinks.WebApp.Controllers
+{
+    [AllowAnonymous]
+    [Route("api/[controller]")]
+    public class MagicLinksController : Controller
+    {
+        private readonly IConfiguration _configuration;
+        public MagicLinksController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
+        [HttpGet("signin-oidc-link")]
+        public IActionResult SignInLink([FromQuery] string id_token_hint)
+        {
+            var magic_link_auth = new AuthenticationProperties { RedirectUri = "/" };
+            magic_link_auth.Items.Add("id_token_hint", id_token_hint);
+
+            string magic_link_policy = _configuration.GetSection("AzureAdB2CConfiguration")["MagicLinksPolicyId"];
+            return Challenge(magic_link_auth, magic_link_policy);
+        }
+    }
+}
+
+```
 
 ## Notes
 

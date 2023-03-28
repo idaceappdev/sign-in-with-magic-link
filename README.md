@@ -290,7 +290,7 @@ namespace TMF.MagicLinks.WebApp.Controllers
 
 This sample policy is based on [SocialAndLocalAccounts starter pack](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack/tree/master/SocialAndLocalAccounts). All changes are marked with **Sample:** comment inside the policy XML files. Make the necessary changes in the **Sample action required** sections.
 
-We need an additional custom policies
+We need two additional custom policies
 
 1. B2C_1A_SignUp_SignIn_with_magic_link
 

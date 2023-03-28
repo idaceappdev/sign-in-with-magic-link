@@ -289,3 +289,459 @@ namespace TMF.MagicLinks.WebApp.Controllers
 ## Notes
 
 This sample policy is based on [SocialAndLocalAccounts starter pack](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack/tree/master/SocialAndLocalAccounts). All changes are marked with **Sample:** comment inside the policy XML files. Make the necessary changes in the **Sample action required** sections.
+
+We need an additional custom policies
+
+1. B2C_1A_SignUp_SignIn_with_magic_link
+
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<TrustFrameworkPolicy
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06"
+  PolicySchemaVersion="0.3.0.0"
+  TenantId="yourtenant.onmicrosoft.com"
+  PolicyId="B2C_1A_SignUp_SignIn_with_magic_link"
+  PublicPolicyUri="http://bundilabsb2c.onmicrosoft.com/B2C_1A_SignUp_SignIn_with_magic_link">
+
+  <BasePolicy>
+    <TenantId>yourtenant.onmicrosoft.com</TenantId>
+    <PolicyId>B2C_1A_TrustFrameworkExtensions</PolicyId>
+  </BasePolicy>
+  <BuildingBlocks>
+    <ClaimsSchema>
+      <!--Sample: indicating that magic link sent to the user -->
+      <ClaimType Id="magicLinkSent">
+      	<DisplayName>magicLinkSent</DisplayName>
+      	<DataType>boolean</DataType>
+      </ClaimType>
+
+      <!--Sample: Stores the message that an email sent to you-->
+      <ClaimType Id="userMessage">
+     	  <DisplayName></DisplayName>
+     	  <DataType>string</DataType>
+        <UserHelpText>Add help text here</UserHelpText>
+     	  <UserInputType>Paragraph</UserInputType>
+      </ClaimType>
+    </ClaimsSchema>
+
+    <ClaimsTransformations>
+      <!--Sample: Initiates the message to be presented to the user-->
+      <ClaimsTransformation Id="CreateUserMessage" TransformationMethod="CreateStringClaim">
+        <InputParameters>
+          <InputParameter Id="value" DataType="string" Value="A link to sign-in has been sent to your inbox." />
+        </InputParameters>
+        <OutputClaims>
+          <OutputClaim ClaimTypeReferenceId="userMessage" TransformationClaimType="createdClaim" />
+        </OutputClaims>
+      </ClaimsTransformation>
+    </ClaimsTransformations>
+  </BuildingBlocks>
+
+
+<ClaimsProviders>
+  <ClaimsProvider>
+    <DisplayName>Local Account</DisplayName>
+    <TechnicalProfiles>
+      <!--Sample: This technical profile collect the email address, and call a validation technical profile
+        to send the magic link to the provided email address-->
+      <TechnicalProfile Id="SelfAsserted-LocalAccountSignin-MagicLink">
+          <DisplayName>Magic link</DisplayName>
+          <Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.SelfAssertedAttributeProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"/>
+          <Metadata>
+            <Item Key="ContentDefinitionReferenceId">api.selfasserted</Item>
+          </Metadata>
+          <OutputClaims>
+            <OutputClaim ClaimTypeReferenceId="email" Required="true"/>
+            <OutputClaim ClaimTypeReferenceId="magicLinkSent" />
+          </OutputClaims>
+          <OutputClaimsTransformations>
+             <OutputClaimsTransformation ReferenceId="CreateUserMessage" />
+          </OutputClaimsTransformations>
+          <ValidationTechnicalProfiles>
+            <ValidationTechnicalProfile ReferenceId="REST-SendMacigLink"/>
+          </ValidationTechnicalProfiles>
+          <UseTechnicalProfileForSessionManagement ReferenceId="SM-AAD"/>
+        </TechnicalProfile>
+
+        <!-- Demo: Show email sent message-->
+        <TechnicalProfile Id="SelfAsserted-EmailSent">
+          <DisplayName>Sing-in with local account</DisplayName>
+          <Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.SelfAssertedAttributeProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"/>
+          <Metadata>
+            <Item Key="ContentDefinitionReferenceId">api.selfasserted</Item>
+            <!-- Sample: Remove the continue and cancel button-->
+            <Item Key="setting.showContinueButton">false</Item>
+            <Item Key="setting.showCancelButton">false</Item>
+         </Metadata>
+          <InputClaims>
+            <InputClaim ClaimTypeReferenceId="userMessage"/>
+          </InputClaims>
+          <OutputClaims>
+            <OutputClaim ClaimTypeReferenceId="userMessage"/>
+          </OutputClaims>
+        </TechnicalProfile>
+      </TechnicalProfiles>
+    </ClaimsProvider>
+
+    <!--Sample: This technical profile sends a magic link to the provided email address-->
+    <ClaimsProvider>
+      <DisplayName>Custom REST API</DisplayName>
+      <TechnicalProfiles>
+        <TechnicalProfile Id="REST-SendMacigLink">
+          <DisplayName>Send a magic link</DisplayName>
+          <Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.RestfulProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+          <Metadata>
+            <!--Sample action required: replace with your endpoint location -->
+            <Item Key="ServiceUrl">https://azureb2cmagiclinksapp.azurewebsites.net/api/identity</Item>
+            <Item Key="AuthenticationType">None</Item>
+            <Item Key="AllowInsecureAuthInProduction">true</Item>
+            <Item Key="SendClaimsIn">Body</Item>
+          </Metadata>
+          <InputClaims>
+            <InputClaim ClaimTypeReferenceId="email" />
+          </InputClaims>
+          <OutputClaims>
+            <OutputClaim ClaimTypeReferenceId="magicLinkSent" DefaultValue="true" AlwaysUseDefaultValue="true"/>
+          </OutputClaims>
+          <UseTechnicalProfileForSessionManagement ReferenceId="SM-Noop" />
+        </TechnicalProfile>
+      </TechnicalProfiles>
+    </ClaimsProvider>
+
+  </ClaimsProviders>
+<UserJourneys>
+  <UserJourney Id="SignUpOrSignInWithMagicLink">
+      <OrchestrationSteps>
+
+        <OrchestrationStep Order="1" Type="CombinedSignInAndSignUp" ContentDefinitionReferenceId="api.signuporsignin">
+          <ClaimsProviderSelections>
+            <ClaimsProviderSelection TargetClaimsExchangeId="FacebookExchange"/>
+            <!--Sample: Adding the sign-in with magic link button-->
+            <ClaimsProviderSelection TargetClaimsExchangeId="SignInWithMagicLinkExchange"/>
+            <ClaimsProviderSelection ValidationClaimsExchangeId="LocalAccountSigninEmailExchange"/>
+          </ClaimsProviderSelections>
+          <ClaimsExchanges>
+            <ClaimsExchange Id="LocalAccountSigninEmailExchange" TechnicalProfileReferenceId="SelfAsserted-LocalAccountSignin-Email"/>
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <!-- Check if the user has selected to sign in using one of the social providers -->
+        <OrchestrationStep Order="2" Type="ClaimsExchange">
+          <Preconditions>
+            <Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+              <Value>objectId</Value>
+              <Action>SkipThisOrchestrationStep</Action>
+            </Precondition>
+          </Preconditions>
+          <ClaimsExchanges>
+            <ClaimsExchange Id="FacebookExchange" TechnicalProfileReferenceId="Facebook-OAUTH"/>
+            <ClaimsExchange Id="SignInWithMagicLinkExchange" TechnicalProfileReferenceId="SelfAsserted-LocalAccountSignin-MagicLink"/>
+            <ClaimsExchange Id="SignUpWithLogonEmailExchange" TechnicalProfileReferenceId="LocalAccountSignUpWithLogonEmail"/>
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <!-- Sample: If user choose to sign-in with magic email, stop the flow. -->
+        <OrchestrationStep Order="3" Type="ClaimsExchange">
+          <Preconditions>
+            <Precondition Type="ClaimsExist" ExecuteActionsIf="false">
+              <Value>magicLinkSent</Value>
+              <Action>SkipThisOrchestrationStep</Action>
+            </Precondition>
+          </Preconditions>
+          <ClaimsExchanges>
+            <ClaimsExchange Id="SelfAssertedEmailSent" TechnicalProfileReferenceId="SelfAsserted-EmailSent"/>
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <!-- For social IDP authentication, attempt to find the user account in the directory. -->
+        <OrchestrationStep Order="4" Type="ClaimsExchange">
+          <Preconditions>
+            <Precondition Type="ClaimEquals" ExecuteActionsIf="true">
+              <Value>authenticationSource</Value>
+              <Value>localAccountAuthentication</Value>
+              <Action>SkipThisOrchestrationStep</Action>
+            </Precondition>
+          </Preconditions>
+          <ClaimsExchanges>
+            <ClaimsExchange Id="AADUserReadUsingAlternativeSecurityId" TechnicalProfileReferenceId="AAD-UserReadUsingAlternativeSecurityId-NoError"/>
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <!-- Show self-asserted page only if the directory does not have the user account already (i.e. we do not have an objectId).
+          This can only happen when authentication happened using a social IDP. If local account was created or authentication done
+          using ESTS in step 2, then an user account must exist in the directory by this time. -->
+        <OrchestrationStep Order="5" Type="ClaimsExchange">
+          <Preconditions>
+            <Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+              <Value>objectId</Value>
+              <Action>SkipThisOrchestrationStep</Action>
+            </Precondition>
+          </Preconditions>
+          <ClaimsExchanges>
+            <ClaimsExchange Id="SelfAsserted-Social" TechnicalProfileReferenceId="SelfAsserted-Social"/>
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <!-- This step reads any user attributes that we may not have received when authenticating using ESTS so they can be sent
+          in the token. -->
+        <OrchestrationStep Order="6" Type="ClaimsExchange">
+          <Preconditions>
+            <Precondition Type="ClaimEquals" ExecuteActionsIf="true">
+              <Value>authenticationSource</Value>
+              <Value>socialIdpAuthentication</Value>
+              <Action>SkipThisOrchestrationStep</Action>
+            </Precondition>
+          </Preconditions>
+          <ClaimsExchanges>
+            <ClaimsExchange Id="AADUserReadWithObjectId" TechnicalProfileReferenceId="AAD-UserReadUsingObjectId"/>
+          </ClaimsExchanges>
+        </OrchestrationStep>
+        <!-- The previous step (SelfAsserted-Social) could have been skipped if there were no attributes to collect
+             from the user. So, in that case, create the user in the directory if one does not already exist
+             (verified using objectId which would be set from the last step if account was created in the directory. -->
+        <OrchestrationStep Order="7" Type="ClaimsExchange">
+          <Preconditions>
+            <Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+              <Value>objectId</Value>
+              <Action>SkipThisOrchestrationStep</Action>
+            </Precondition>
+          </Preconditions>
+          <ClaimsExchanges>
+            <ClaimsExchange Id="AADUserWrite" TechnicalProfileReferenceId="AAD-UserWriteUsingAlternativeSecurityId"/>
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <OrchestrationStep Order="8" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer"/>
+
+      </OrchestrationSteps>
+      <ClientDefinition ReferenceId="DefaultWeb"/>
+    </UserJourney>
+  </UserJourneys>
+  <RelyingParty>
+    <DefaultUserJourney ReferenceId="SignUpOrSignInWithMagicLink" />
+    <TechnicalProfile Id="PolicyProfile">
+      <DisplayName>PolicyProfile</DisplayName>
+      <Protocol Name="OpenIdConnect" />
+      <OutputClaims>
+        <OutputClaim ClaimTypeReferenceId="displayName" />
+        <OutputClaim ClaimTypeReferenceId="givenName" />
+        <OutputClaim ClaimTypeReferenceId="surname" />
+        <OutputClaim ClaimTypeReferenceId="email" />
+        <OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="sub"/>
+        <OutputClaim ClaimTypeReferenceId="tenantId" AlwaysUseDefaultValue="true" DefaultValue="{Policy:TenantObjectId}" />
+      </OutputClaims>
+      <SubjectNamingInfo ClaimType="sub" />
+    </TechnicalProfile>
+  </RelyingParty>
+</TrustFrameworkPolicy>
+
+```
+
+2. B2C_1A_SignUp_SignIn_with_magic_link
+
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<TrustFrameworkPolicy
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06"
+  PolicySchemaVersion="0.3.0.0"
+  TenantId="yourtenant.onmicrosoft.com"
+  PolicyId="B2C_1A_signin_with_magic_link"
+  PublicPolicyUri="http://bundilabsb2c.onmicrosoft.com/B2C_1A_signin_with_email">
+
+  <BasePolicy>
+    <TenantId>yourtenant.onmicrosoft.com</TenantId>
+    <PolicyId>B2C_1A_TrustFrameworkExtensions</PolicyId>
+  </BasePolicy>
+
+   <BuildingBlocks>
+    <ClaimsSchema>
+      <!--Sample: Stores the error message for unsolicited request (a request without id_token_hint) and user not found-->
+      <ClaimType Id="errorMessage">
+     	  <DisplayName>Error</DisplayName>
+     	  <DataType>string</DataType>
+        <UserHelpText>Add help text here</UserHelpText>
+     	  <UserInputType>Paragraph</UserInputType>
+      </ClaimType>
+    </ClaimsSchema>
+
+    <ClaimsTransformations>
+      <!--Sample: Initiates the errorMessage claims type with the error message-->
+      <ClaimsTransformation Id="CreateUnsolicitedErrorMessage" TransformationMethod="CreateStringClaim">
+        <InputParameters>
+          <InputParameter Id="value" DataType="string" Value="You cannot sign-in without invitation" />
+        </InputParameters>
+        <OutputClaims>
+          <OutputClaim ClaimTypeReferenceId="errorMessage" TransformationClaimType="createdClaim" />
+        </OutputClaims>
+      </ClaimsTransformation>
+
+      <!--Sample: Initiates the errorMessage claims type with the error message user not found-->
+      <ClaimsTransformation Id="CreateUserNotFoundErrorMessage" TransformationMethod="CreateStringClaim">
+        <InputParameters>
+          <InputParameter Id="value" DataType="string" Value="You aren't registered in the system!" />
+        </InputParameters>
+        <OutputClaims>
+          <OutputClaim ClaimTypeReferenceId="errorMessage" TransformationClaimType="createdClaim" />
+        </OutputClaims>
+      </ClaimsTransformation>
+    </ClaimsTransformations>
+  </BuildingBlocks>
+
+
+  <ClaimsProviders>
+    <!--Sample: This technical profile specifies how B2C should validate your token, and what claims you want B2C to extract from the token.
+      The METADATA value in the TechnicalProfile meta-data is required.
+      The “IdTokenAudience” and “issuer” arguments are optional (see later section)-->
+    <ClaimsProvider>
+      <DisplayName>My ID Token Hint ClaimsProvider</DisplayName>
+      <TechnicalProfiles>
+        <TechnicalProfile Id="IdTokenHint_ExtractClaims">
+          <DisplayName> My ID Token Hint TechnicalProfile</DisplayName>
+          <Protocol Name="None" />
+          <Metadata>
+
+            <!--Sample action required: replace with your endpoint location -->
+            <Item Key="METADATA">https://azureb2cmagiclinksapp.azurewebsites.net/.well-known/openid-configuration</Item>
+
+            <!-- <Item Key="IdTokenAudience">your_optional_audience_override</Item> -->
+            <!-- <Item Key="issuer">your_optional_token_issuer_override</Item> -->
+          </Metadata>
+        <OutputClaims>
+          <!--Sample: Read the email cliam from the id_token_hint-->
+          <OutputClaim ClaimTypeReferenceId="email" />
+        </OutputClaims>
+        </TechnicalProfile>
+      </TechnicalProfiles>
+    </ClaimsProvider>
+
+    <ClaimsProvider>
+      <DisplayName>Self Asserted</DisplayName>
+      <TechnicalProfiles>
+        <!-- Demo: Show error message-->
+        <TechnicalProfile Id="SelfAsserted-Error">
+          <DisplayName>Unsolicited error message</DisplayName>
+          <Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.SelfAssertedAttributeProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"/>
+          <Metadata>
+            <Item Key="ContentDefinitionReferenceId">api.selfasserted</Item>
+            <!-- Sample: Remove the continue button-->
+            <Item Key="setting.showContinueButton">false</Item>
+         </Metadata>
+          <InputClaims>
+            <InputClaim ClaimTypeReferenceId="errorMessage"/>
+          </InputClaims>
+          <OutputClaims>
+            <OutputClaim ClaimTypeReferenceId="errorMessage"/>
+          </OutputClaims>
+        </TechnicalProfile>
+
+        <!-- Demo: Show unsolicited error message-->
+        <TechnicalProfile Id="SelfAsserted-Unsolicited">
+          <InputClaimsTransformations>
+            <InputClaimsTransformation ReferenceId="CreateUnsolicitedErrorMessage" />
+          </InputClaimsTransformations>
+          <IncludeTechnicalProfile ReferenceId="SelfAsserted-Error" />
+        </TechnicalProfile>
+
+        <!-- Demo: Show user not found error message-->
+        <TechnicalProfile Id="SelfAsserted-UserNotFound">
+          <InputClaimsTransformations>
+            <InputClaimsTransformation ReferenceId="CreateUserNotFoundErrorMessage" />
+          </InputClaimsTransformations>
+          <IncludeTechnicalProfile ReferenceId="SelfAsserted-Error" />
+        </TechnicalProfile>
+      </TechnicalProfiles>
+    </ClaimsProvider>
+
+    <ClaimsProvider>
+      <DisplayName>Azure Active Directory</DisplayName>
+      <TechnicalProfiles>
+        <TechnicalProfile Id="AAD-UserReadUsingEmailAddress">
+          <Metadata>
+            <!--Sample: don't raise error if user not found. We have an orchestration step to handle the error message-->
+            <Item Key="RaiseErrorIfClaimsPrincipalDoesNotExist">false</Item>
+          </Metadata>
+          <OutputClaims>
+            <!--Sample: add optional claims to read from the directory-->
+            <OutputClaim ClaimTypeReferenceId="givenName"/>
+            <OutputClaim ClaimTypeReferenceId="surname"/>
+          </OutputClaims>
+        </TechnicalProfile>
+      </TechnicalProfiles>
+    </ClaimsProvider>
+  </ClaimsProviders>
+
+  <UserJourneys>
+    <UserJourney Id="SignUpOrSignInWithEmail">
+      <OrchestrationSteps>
+
+        <!--Sample: Read the input claims from the id_token_hint-->
+        <OrchestrationStep Order="1" Type="GetClaims" CpimIssuerTechnicalProfileReferenceId="IdTokenHint_ExtractClaims" />
+
+        <!-- Sample: Check if user tries to run the policy without invitation -->
+        <OrchestrationStep Order="2" Type="ClaimsExchange">
+         <Preconditions>
+            <Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+              <Value>email</Value>
+              <Action>SkipThisOrchestrationStep</Action>
+            </Precondition>
+          </Preconditions>
+          <ClaimsExchanges>
+            <ClaimsExchange Id="SelfAsserted-Unsolicited" TechnicalProfileReferenceId="SelfAsserted-Unsolicited" />
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <!--Sample: Read the user properties from the directory-->
+        <OrchestrationStep Order="3" Type="ClaimsExchange">
+          <ClaimsExchanges>
+            <ClaimsExchange Id="AADUserReadUsingEmailAddress" TechnicalProfileReferenceId="AAD-UserReadUsingEmailAddress"/>
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <!-- Sample: Check whether the user not existed in the directory -->
+        <OrchestrationStep Order="4" Type="ClaimsExchange">
+          <Preconditions>
+            <Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+              <Value>objectId</Value>
+              <Action>SkipThisOrchestrationStep</Action>
+            </Precondition>
+          </Preconditions>
+          <ClaimsExchanges>
+            <ClaimsExchange Id="SelfAssertedUserNotFound" TechnicalProfileReferenceId="SelfAsserted-UserNotFound" />
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <!--Sample: Issue an access token-->
+        <OrchestrationStep Order="5" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer"/>
+
+      </OrchestrationSteps>
+      <ClientDefinition ReferenceId="DefaultWeb"/>
+    </UserJourney>
+  </UserJourneys>
+
+
+  <RelyingParty>
+    <DefaultUserJourney ReferenceId="SignUpOrSignInWithEmail" />
+    <TechnicalProfile Id="PolicyProfile">
+      <DisplayName>PolicyProfile</DisplayName>
+      <Protocol Name="OpenIdConnect" />
+      <!--Sample: Set the input claims to be read from the id_token_hint-->
+      <InputClaims>
+        <InputClaim ClaimTypeReferenceId="email" />
+      </InputClaims>
+      <OutputClaims>
+        <OutputClaim ClaimTypeReferenceId="displayName" />
+        <OutputClaim ClaimTypeReferenceId="givenName" />
+        <OutputClaim ClaimTypeReferenceId="surname" />
+        <OutputClaim ClaimTypeReferenceId="email" />
+        <OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="sub"/>
+        <OutputClaim ClaimTypeReferenceId="tenantId" AlwaysUseDefaultValue="true" DefaultValue="{Policy:TenantObjectId}" />
+      </OutputClaims>
+      <SubjectNamingInfo ClaimType="sub" />
+    </TechnicalProfile>
+  </RelyingParty>
+</TrustFrameworkPolicy>
+```

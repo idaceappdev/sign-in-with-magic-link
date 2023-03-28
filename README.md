@@ -163,6 +163,10 @@ Thing is - while this would prove the setup is correct this doesn't plug into yo
 
 If your app is running at https://foo.bar a SignIn action will take you to https://contoso.b2clogin.com/xyz, and once you have logged in B2C will send your browser session back to https://foo.bar/signin-oidc.
 
+The App Registration for the sample app would then have redirect URIs as shown below.
+
+![App Redirect URIs.](images/redirecturl.png)
+
 You might think that this means that you can just make the magic link send you directly to B2C and include the corresponding return url, but what will happen is that the app running at https://foo.bar will recognize that it didn't initiate the request and basically says "I don't trust this". (Auth endpoints are different than API endpoints so it's not just a matter of accepting a token.)
 
 So the flow basically becomes something like this:

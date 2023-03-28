@@ -19,7 +19,6 @@ Azure AD B2C sends a sign-in link (with a id*token_hint) and present a message \
 At this point user needs to open the email and click on the link, that takes to user to Azure AD B2C policy.
 
 ![An email to app flow diagram.](images/email-confirmation.png)
-
 Azure AD B2C validate the input id_token_hint, issues an access token, and redirect the user back to the application.
 
 ![An email to app flow diagram.](images/userloggedin.png)
@@ -50,6 +49,25 @@ $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=MySelfSignedCertific
 $cert.Thumbprint
 ```
 
+Export the certificate as a pfx-file and hop on over to the B2C part of the Azure Portal.
+
+(Copying Microsoft's instructions)
+
+In the "Policy Keys" blade, Click Add to create a new key and select Upload in the options.
+
+Give it a name, something like Id_Token_Hint_Cert and select key type to be RSA and usage to be Signature. You can optionally set the expiration to the expiration date of the cert. Save the name of the generated key.
+Create a dummy set of new base, extension and relying party files. You can do so by downloading it from the starter pack here:
+https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack.
+
+To keep things simple we will use
+https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack/tree/master/LocalAcc... but any starter pack can be used. (Suffix these with \_DUMMY or something so you don't mix them with actual policies.)
+
+Once you have successfully setup the new starter pack policies open the base file of this set and update the TechnicalProfile Id="JwtIssuer" Here we will update the token signing key container to the key we created.
+
+Update B2C_1A_TokenSigningKeyContainer to B2C_1A_Id_Token_Hint_Cert like this:
+
+<Key Id="issuer_secret" StorageReferenceId="B2C_1A_Id_Token_Hint_Cert" />
+
 ### Configuring the application
 
 Update the _appSettings_ values in **appsettings.json** with the information for your Azure AD B2C tenant and the signing certificate you just created.
@@ -69,6 +87,61 @@ Update the _appSettings_ values in **appsettings.json** with the information for
 - **SMTPUseSSL**: SMTP use SSL, true of false
 - **SMTPFromAddress**: Send from email address
 - **SMTPSubject**: The invitation email's subject
+
+### Creating B2C mailer
+
+Sending the emails are a matter of calling into a REST API which can be done any number of ways. To simplify things SendGrid has NuGet packages for use with C#, and in this case there are a couple of additional lines of code needed for generating the token and url. If you want to do a script-based version or a web page is sort of up to you.
+
+```csharp
+using SendGrid;
+using SendGrid.Helpers.Mail;
+using System.Net;
+using TMF.MagicLinks.API.DTO;
+
+namespace TMF.MagicLinks.API.Infrastructure
+{
+    public class MailDeliveryService
+    {
+        private readonly ISendGridClient _sendGridClient;
+        private readonly IConfiguration _configuration;
+
+        public MailDeliveryService(ISendGridClient sendGridClient,
+                                   IConfiguration configuration)
+        {
+            _sendGridClient = sendGridClient;
+            _configuration = configuration;
+        }
+
+        public async Task SendInvitationMessageAsync(EmailContentWithMagicLink userMailInvitation)
+        {
+            string fromEmailAddress = _configuration
+                  .GetSection("SendGridConfiguration")["FromEmail"];
+            string toEmailAddress = userMailInvitation.ToEmail;
+            string mailTemplateId = _configuration
+                  .GetSection("SendGridConfiguration")["MailTemplateId"];
+
+
+
+            var emailMessage = MailHelper.CreateSingleTemplateEmail(
+                 new EmailAddress(fromEmailAddress),
+                 new EmailAddress(toEmailAddress),
+                 mailTemplateId,
+                 new
+                 {
+                     magicLink = userMailInvitation.LoginMagicLink
+                 });
+
+            var response = await _sendGridClient.SendEmailAsync(emailMessage);
+            if (response.StatusCode != HttpStatusCode.Accepted)
+            {
+                var responseContent = await response.Body.ReadAsStringAsync();
+                throw new Exception($"SendGrid service returned status code {response.StatusCode}" +
+                                    $" with response: {responseContent}");
+            }
+        }
+    }
+}
+```
 
 ### Running the application
 

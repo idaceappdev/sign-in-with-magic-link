@@ -6,19 +6,23 @@ This sample demonstrates how to sign-in to a web application by sending a sign-i
 
 ![A User flow diagram of this sample.](images/loginpage.png)
 
-To sign-in, from Azure AD B2C sign-up or sign-in page, user select to sign-in with **Magic link**. Then user types an **email address** and click **Continue**. Azure AD B2C sends a sign-in link (with a id*token_hint) and present a message \_A link to sign-in has been sent to your inbox.*.
+To sign-in, from Azure AD B2C sign-up or sign-in page, user select to sign-in with **Magic link**. Then user types an **email address** and click **Continue**.
 
 ![A User flow diagram of this sample.](images/signup-with-magiclink.png)
 
-At this point user needs to open the email and click on the link, that takes to user to Azure AD B2C policy. Azure AD B2C validate the input id_token_hint, issues an access token, and redirect the user back to the application.
-
 ![An email to app flow diagram.](images/email-address.png)
+
+Azure AD B2C sends a sign-in link (with a id*token_hint) and present a message \_A link to sign-in has been sent to your inbox.*.
 
 ![An email to app flow diagram.](images/emaillink-sent.png)
 
+At this point user needs to open the email and click on the link, that takes to user to Azure AD B2C policy.
+
 ![An email to app flow diagram.](images/email-confirmation.png)
 
-![An email to app flow diagram.](images/userlogged.png)
+Azure AD B2C validate the input id_token_hint, issues an access token, and redirect the user back to the application.
+
+![An email to app flow diagram.](images/userloggedin.png)
 
 ## Sending Application Data
 
